@@ -24,16 +24,52 @@ logger = logging.getLogger('myspider')
 3、验证码识别
 '''
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 class SouHuPoster(object):
     def __init__(self, username, password):
+        self.base_url =  "http://hn.focus.cn/msglist/271792/"   # 该编号是楼盘编号 
         self.username = username
         self.password = password
-        # 该编号是楼盘编号
-        self.base_url =  "http://hn.focus.cn/msglist/271792/"  
-        self._login()  
+        self.session = requests.Session()      
+        # self._login() 
+        try:
+            self._get_cookies()
+        except IOError as e:
+            logger.error(e)
+        if self._check_login():            
+            logger.debug('login success')
+        else:
+            # 防止cookie过期失效
+            self.session.cookies.clear()
+            self._login()
+ 
+    def _check_login(self):
+        """验证是否登陆成功
+        Returns:
+            Boolean: 是否登陆成功
+        """
+        login_url = 'http://login.focus.cn/passport/getUserInfo'
+        res = self.session.get(login_url, headers=HEADERS, verify=False)
+        # import pdb
+        # pdb.set_trace()
+        resp_json = res.json()
+        code = resp_json['code']
+        if code == 200:
+            return True
+        else:
+            logger.debug('last cache lose efficacy, response.text:{}'.format(resp_json))
+            return False
     
-    def _login(self):
-     
+    def _get_cookies(self):
+        """从文本中获得cookie
+        """
+        cookie_file = os.path.join(BASE_DIR, "cookies/login_cookies.json" )
+        with open(cookie_file) as f:
+            cookies = json.load(f)
+            self.session.cookies.update(cookies)
+        
+    def _login(self):     
         driver = webdriver.Chrome(executable_path="C:/Program Files (x86)/Google/Chrome/Application/chromedriver")
         # driver = webdriver.PhantomJS()
         driver.get(self.base_url)
@@ -66,13 +102,13 @@ class SouHuPoster(object):
         cookies = driver.get_cookies()
         login_cookies = {item["name"] : item["value"] for item in cookies}     
         # page_html = driver.page_source
-        # if self._check_login(page_html):
-        with open("cookies/login_cookies.json", "w") as f:
-            json.dump(login_cookies, f)     
-        #     self.session.cookies.update(login_cookies)
-        #     logger.debug('login success')
-        # else:
-        #     logger.debug('login failed')
+        if self._check_login():
+            with open("cookies/login_cookies.json", "w") as f:
+                json.dump(login_cookies, f)     
+            self.session.cookies.update(login_cookies)
+            logger.debug('login success')
+        else:
+            logger.debug('login failed')
         logger.debug('login cookies: {} '.format(pprint.pformat(login_cookies)))
         return login_cookies    
 
