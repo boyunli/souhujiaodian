@@ -70,8 +70,9 @@ class SouHuPoster(object):
             self.session.cookies.update(cookies)
         
     def _login(self):     
-        driver = webdriver.Chrome(executable_path="C:/Program Files (x86)/Google/Chrome/Application/chromedriver")
-        # driver = webdriver.PhantomJS()
+        # driver = webdriver.Chrome(executable_path="C:/Program Files (x86)/Google/Chrome/Application/chromedriver")
+        driver = webdriver.PhantomJS()
+      
         driver.get(self.base_url)
         logger.debug("start login")
         login_field = driver.find_element_by_class_name("login")
@@ -81,7 +82,7 @@ class SouHuPoster(object):
         time.sleep(10)  
         
         # 选择账号登录
-        account_login = driver.find_element_by_class_name("type-menu")
+        account_login = driver.find_element_by_class_name("type-menu").find_element_by_tag_name('a')
         account_login.click()
        
         # import pdb
@@ -97,15 +98,15 @@ class SouHuPoster(object):
         passwd_field.send_keys(self.password)
         login_button = form.find_element_by_class_name("btn")
         login_button.click()
-        time.sleep(20)
+        time.sleep(10)
 
         cookies = driver.get_cookies()
         login_cookies = {item["name"] : item["value"] for item in cookies}     
         # page_html = driver.page_source
         if self._check_login():
-            with open("cookies/login_cookies.json", "w") as f:
-                json.dump(login_cookies, f)     
             self.session.cookies.update(login_cookies)
+            with open("cookies/login_cookies.json", "w") as f:
+                json.dump(login_cookies, f)      
             logger.debug('login success')
         else:
             logger.debug('login failed')
