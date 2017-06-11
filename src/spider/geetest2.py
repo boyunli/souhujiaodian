@@ -4,7 +4,11 @@ import os
 import logging.config
 import json
 import random
+import time
+import re
+import StringIO
 
+from PIL import Image
 from lxml import etree
 import requests
 
@@ -123,8 +127,6 @@ class BaseGeetestCrack(object):
         return str(int(random.random()*10000+int(time.time()*1000)))
 
     def get_challenge(self):
-        import pdb
-        pdb.set_trace()
         url = 'http://api.geetest.com/get.php?gt={}'.format(self.get_gt())
         # 该js_text包含: id, static_server等
         js_text = self.session.get(url=url, headers=HEADERS).text
@@ -133,7 +135,8 @@ class BaseGeetestCrack(object):
         static_host = 'http://static.geetest.com/'
         bg_img = static_host + re.findall(r'"bg":\s"(\S+)?"', js_text)[0]
         fullbg_img = static_host + re.findall(r'"fullbg":\s"(\S+)?"', js_text)[0]
-        slice_img = static_host + re.findall(r'"slice":\s"(\S+)?"}', js_text)[0] 
+
+        slice_img = static_host + re.findall(r'"slice":\s"(\S+)?"', js_text)[0] 
         self.geeimg = {
                 'bg': bg_img,
                 'fullbg': fullbg_img,
@@ -177,11 +180,11 @@ class BaseGeetestCrack(object):
                 o -= 1
         return p
     
-     def get_xpos_trace(self):
+    def get_xpos_trace(self):
          fullbg = self.geeimg['fullbg']
          bg = self.geeimg['bg']
          xpos, tracks = CrackPicture(fullbg, bg).pictures_recover()
-         return xpos. tracks
+         return xpos, tracks
 
     def gee_c(self, a):
         e = []
@@ -204,6 +207,28 @@ class BaseGeetestCrack(object):
             e.append([b, c, f])
         return e
 
+    def gee_e(self, a):
+        b = [[1, 0], [2, 0], [1, -1], [1, 1], [0, 1], [0, -1], [3, 0], [2,-1], [2, 1]]
+        c = "stuvwxyz~"
+        for d in range(len(b)):
+            if a[0] == b[d][0] and a[1] == b[d][1]:
+                return c[d]
+        return 0
+
+    def gee_d(self, a):
+        b = "()*,-./0123456789:?@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqr"
+        c = len(b)
+        d = ""
+        e = abs(a)
+        f = e/c
+        if f >= c: f = c - 1
+        if f: d = b[f]
+        e %= c
+        g = ""
+        if a < 0: g += "!"
+        if d: g += "$"
+        return g + d + b[e]
+
     def gee_f(self, a):
         g = []
         h = []
@@ -218,44 +243,56 @@ class BaseGeetestCrack(object):
             i.append(self.gee_d(a[j][2]))
         return "".join(g) + "!!" + "".join(h) + "!!" + "".join(i)
 
-    def refresh(self):
+    def refresh(self, challenge):
         hd = HEADERS
         url = "https://api.geetest.com/refresh.php?challenge={}&gt={}&callback=geetest_{}"\
-                .format(self.get_challenge()), self.get_gt(), self.gen_timestamp())
+                .format(challenge, self.get_gt(), self.gee_timestamp())
         ans = self.session.get(url=url, headers=HEADERS)
         tjson = re.findall("\((.*?)\)", ans.content)[0]
         self.geeimg.update(json.loads(tjson))
 
     def process(self):
-        xpos, tracks = self.get_xpos_trace()
-        logger.debug('xpos:{}'.format(xpos))
-        act = self.gee_f(self.gee_c(tracks))
-        time.sleep(0.6)
-        passtime = str(tracks[-1][-1])
-        imgload = str(random.randint(0,200) + 50)
-        userresponse = self.get_userresponse(xpos, self.get_challenge())
-        time.sleep(0.6)
-        url = 'http://api.geetest.com/ajax.php?gt={gt}&challenge={challenge}&passtime={passtime}&imgload={imgload}&a={a}&callback=geetest_{timestamp}'\
-                .format(
-                        gt = self.get_gt(),
-                        challenge = self.get_challenge(),
-                        passtime = passtime,
-                        imgload = imgload,
-                        a = act,
-                        timestamp = self.gee_timestamp()
-                        )
-        text = self.session.get(url=url, headers=HEADERS).text
-        logger.debug('\033[92m 滑块验证后返回的text:{} \033[0m'.format(text))
-        tjson = json.loads(re.findall("\((.*?)\)", text)[0])
-        if tjson["success"] != 1:
-            if times == 0:
-                raise NameError
-            time.sleep(6)
-            self.refresh()
-            times -= 1
-            continue
-        else:
-            logger.debug('滑块验证成功!')
+        times = 4
+        while True:
+            challenge = self.get_challenge()
+            xpos, tracks = self.get_xpos_trace()
+            logger.debug('xpos:{}'.format(xpos))
+            import pdb
+            pdb.set_trace()
+            act = self.gee_f(self.gee_c(tracks))
+            time.sleep(0.6)
+            passtime = str(tracks[-1][-1])
+            imgload = str(random.randint(0,200) + 50)
+            userresponse = self.get_userresponse(xpos, challenge)
+            time.sleep(0.6)
+            url = 'http://api.geetest.com/ajax.php?gt={gt}&challenge={challenge}&userresponse={userresponse}&passtime={passtime}&imgload={imgload}&a={a}&callback=geetest_{timestamp}'\
+                    .format(
+                            gt = self.get_gt(),
+                            challenge = challenge,
+                            userresponse = userresponse,
+                            passtime = passtime,
+                            imgload = imgload,
+                            a = act,
+                            timestamp = self.gee_timestamp()
+                            )
+            logger.debug('\033[94m geetest url:{}\033[0m'.format(url))
+            text = self.session.get(url=url, headers=HEADERS).text
+            tjson = json.loads(re.findall("\((.*?)\)", text)[0])
+            if tjson.has_key('success'):
+                logger.debug('\033[92m 滑块验证返回:{} \033[0m'.format(text))
+                if tjson["success"] != 1:
+                    if times == 0:
+                        raise NameError
+                    time.sleep(6)
+                    self.refresh(challenge)
+                    times -= 1
+                    continue
+                else:
+                    logger.debug('滑块验证成功!')
+                    break
+            elif tjson.has_key('error'):
+                logger.error('\033[92m 滑块验证失败:{}\033[0m'.format(text))
+                break
 
 
 

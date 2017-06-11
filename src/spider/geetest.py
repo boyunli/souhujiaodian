@@ -188,10 +188,9 @@ class Geetest(object):
 
 
 if __name__ == "__main__":
-    #print
-    CrackPicture(
-            "http://static.geetest.com/pictures/gt/fc064fc73/fc064fc73.jpg",
-            "http://static.geetest.com/pictures/gt/fc064fc73/bg/7ca363b09.jpg")\
-        .pictures_recover()
+    #CrackPicture(
+    #        "http://static.geetest.com/pictures/gt/fc064fc73/fc064fc73.jpg",
+    #        "http://static.geetest.com/pictures/gt/fc064fc73/bg/7ca363b09.jpg")\
+    #    .pictures_recover()
     Geetest("chrome").run()
 
