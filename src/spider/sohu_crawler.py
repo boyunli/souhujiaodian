@@ -38,7 +38,7 @@ class SouHuPoster(object):
         except IOError as e:
             logger.error(e)
         if self._check_login():            
-            logger.debug('login success')
+            logger.debug('coockie from cache, login success')
         else:
             # 防止cookie过期失效
             self.session.cookies.clear()
