@@ -23,6 +23,9 @@ from settings import  HEADERS, LOGGING
 logging.config.dictConfig(LOGGING)
 logger = logging.getLogger('myspider')
 
+'''
+该脚本滑块验证失败
+'''
 
 class CrackPicture(object):
 
@@ -67,7 +70,7 @@ class CrackPicture(object):
                     for h in range(58):
                         ht = 58 * row + h
                         wd = 10 * column + w
-                        im_new.putpixel((wd, ht), im.getpixel((w + right, hdown)))
+                        im_new.putpixel((wd, ht), im.getpixel((w + right, down)))
         im_new.save(name)
         return im_new
 
@@ -107,7 +110,7 @@ class Geetest(object):
         time.sleep(1.1)
         element = self.wait_for(By.ID, "btn_query")
         element.click()
-        time.sleep(1.1)
+        time.sleep(10)
 
 
     def drag_pic(self):

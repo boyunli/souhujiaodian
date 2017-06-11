@@ -1,4 +1,8 @@
 # coding:utf-8
+'''
+该脚本滑块验证失败
+a值获取有问题
+'''
 
 import os
 import logging.config
